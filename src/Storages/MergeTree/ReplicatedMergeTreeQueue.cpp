@@ -259,6 +259,8 @@ void ReplicatedMergeTreeQueue::insertUnlocked(
     /// Put 'DROP PARTITION' entries at the beginning of the queue not to make superfluous fetches of parts that will be eventually deleted
     if (entry->getDropRange(format_version))
         queue.push_front(entry);
+    else if (entry->type == LogEntry::GET_PART && storage.getSettings()->queue_priority_for_recent_fetches)
+        queue.push_front(entry);
     else
         queue.push_back(entry);
 

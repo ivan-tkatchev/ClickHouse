@@ -10,6 +10,7 @@
 #include <Poco/Logger.h>
 #include <sys/mman.h> /// MADV_POPULATE_WRITE
 
+#include "config.h"
 
 namespace DB
 {
@@ -63,9 +64,9 @@ void * allocNoTrack(size_t size, size_t alignment)
     if (alignment <= MALLOC_MIN_ALIGNMENT)
     {
         if constexpr (clear_memory)
-            buf = ::calloc(size, 1);
+            buf = ALLOC_PREFIX(calloc)(size, 1);
         else
-            buf = ::malloc(size);
+            buf = ALLOC_PREFIX(malloc)(size);
 
         if (nullptr == buf)
             throw DB::ErrnoException(DB::ErrorCodes::CANNOT_ALLOCATE_MEMORY, "Allocator: Cannot malloc {}.", ReadableSize(size));
@@ -73,7 +74,7 @@ void * allocNoTrack(size_t size, size_t alignment)
     else
     {
         buf = nullptr;
-        int res = posix_memalign(&buf, alignment, size);
+        int res = ALLOC_PREFIX(posix_memalign)(&buf, alignment, size);
 
         if (0 != res)
             throw DB::ErrnoException(
@@ -91,7 +92,7 @@ void * allocNoTrack(size_t size, size_t alignment)
 
 void freeNoTrack(void * buf)
 {
-    ::free(buf);
+    ALLOC_PREFIX(free)(buf);
 }
 
 void checkSize(size_t size)
@@ -152,7 +153,7 @@ void * Allocator<clear_memory_, populate>::realloc(void * buf, size_t old_size, 
         auto trace_alloc = CurrentMemoryTracker::alloc(new_size);
         trace_free.onFree(buf, old_size);
 
-        void * new_buf = ::realloc(buf, new_size);
+        void * new_buf = ::ALLOC_PREFIX(realloc)(buf, new_size);
         if (nullptr == new_buf)
         {
             throw DB::ErrnoException(

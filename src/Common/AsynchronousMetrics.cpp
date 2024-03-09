@@ -654,6 +654,9 @@ void AsynchronousMetrics::update(TimePoint update_time, bool force_update)
             /// that can be used at anytime via jemalloc.
             free_memory_in_allocator_arenas = je_malloc_pdirty * getPageSize();
 #endif
+#if USE_WRAPPED_ALLOCATOR
+            free_memory_in_allocator_arenas = ALLOC_PREFIX(malloc_cached_memory_size)();
+#endif
 
             Int64 difference = rss - amount;
 

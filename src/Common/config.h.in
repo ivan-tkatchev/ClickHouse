@@ -65,7 +65,36 @@
 #cmakedefine01 USE_BCRYPT
 #cmakedefine01 USE_LIBARCHIVE
 #cmakedefine01 USE_POCKETFFT
+#cmakedefine01 USE_WRAPPED_ALLOCATOR
 
 /// This is needed for .incbin in assembly. For some reason, include paths don't work there in presence of LTO.
 /// That's why we use absolute paths.
 #cmakedefine SOURCE_DIR "@SOURCE_DIR@"
+
+#if USE_WRAPPED_ALLOCATOR
+#define ALLOC_PREFIX(func) wrap_##func
+
+#include <stddef.h>
+
+extern "C"
+{
+    void *ALLOC_PREFIX(malloc)(size_t size);
+    void ALLOC_PREFIX(free)(void *ptr);
+    void *ALLOC_PREFIX(calloc)(size_t nmemb, size_t size);
+    void *ALLOC_PREFIX(realloc)(void *ptr, size_t size);
+    int ALLOC_PREFIX(posix_memalign)(void **memptr, size_t alignment, size_t size);
+    void *ALLOC_PREFIX(aligned_alloc)(size_t alignment, size_t size);
+    void *ALLOC_PREFIX(valloc)(size_t size);
+    void *ALLOC_PREFIX(memalign)(size_t alignment, size_t size);
+#if !defined(USE_MUSL)
+    void *ALLOC_PREFIX(pvalloc)(size_t size);
+#endif
+#if defined(_GNU_SOURCE)
+    size_t ALLOC_PREFIX(malloc_usable_size)(void *ptr);
+#endif
+    size_t ALLOC_PREFIX(malloc_cached_memory_size)();
+}
+
+#else
+#define ALLOC_PREFIX(func) func
+#endif

@@ -3,6 +3,7 @@
 #include <Common/Exception.h>
 #include <Common/formatReadable.h>
 
+#include "config.h"
 
 namespace DB
 {
@@ -16,7 +17,7 @@ namespace ErrorCodes
 void AlignedBuffer::alloc(size_t size, size_t alignment)
 {
     void * new_buf;
-    int res = ::posix_memalign(&new_buf, std::max(alignment, sizeof(void*)), size);
+    int res = ALLOC_PREFIX(posix_memalign)(&new_buf, std::max(alignment, sizeof(void*)), size);
     if (0 != res)
         throw ErrnoException(
             ErrorCodes::CANNOT_ALLOCATE_MEMORY,
@@ -29,7 +30,7 @@ void AlignedBuffer::alloc(size_t size, size_t alignment)
 void AlignedBuffer::dealloc()
 {
     if (buf)
-        ::free(buf);
+        ALLOC_PREFIX(free)(buf);
 }
 
 void AlignedBuffer::reset(size_t size, size_t alignment)

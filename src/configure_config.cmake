@@ -176,5 +176,8 @@ endif()
 if (TARGET ch_contrib::pocketfft)
     set(USE_POCKETFFT 1)
 endif()
+if (ENABLE_WRAPPED_ALLOCATOR)
+    set(USE_WRAPPED_ALLOCATOR 1)
+endif()
 
 set(SOURCE_DIR ${PROJECT_SOURCE_DIR})

@@ -31,6 +31,10 @@
 #include <cstdlib>
 #include <string>
 
+namespace CurrentMetrics
+{
+    extern const Metric AllocatorCachedMemoryTracking;
+}
 
 namespace
 {
@@ -544,6 +548,8 @@ void MemoryTracker::setRSS(Int64 rss_, Int64 free_memory_in_allocator_arenas_)
     auto metric_loaded = total_memory_tracker.metric.load(std::memory_order_relaxed);
     if (metric_loaded != CurrentMetrics::end())
         CurrentMetrics::set(metric_loaded, new_amount);
+
+    CurrentMetrics::set(CurrentMetrics::AllocatorCachedMemoryTracking, free_memory_in_allocator_arenas_);
 
     bool log_memory_usage = true;
     total_memory_tracker.updatePeak(rss_, log_memory_usage);

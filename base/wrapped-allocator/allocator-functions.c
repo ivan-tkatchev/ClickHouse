@@ -33,4 +33,5 @@ size_t ALLOC_PREFIX(malloc_cached_memory_size)(void) { fail(__func__); }
 
 size_t ALLOC_PREFIX(malloc_allocated_memory_size)(void) { fail(__func__); }
 
+size_t ALLOC_PREFIX(malloc_compact)(void) { fail(__func__); }
 

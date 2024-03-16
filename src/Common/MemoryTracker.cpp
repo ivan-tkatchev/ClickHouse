@@ -336,6 +336,11 @@ AllocationTrace MemoryTracker::allocImpl(Int64 size, bool throw_if_memory_exceed
 
     if (unlikely(current_hard_limit && will_be > limit_to_check))
     {
+
+#if USE_WRAPPED_ALLOCATOR
+        ALLOC_PREFIX(malloc_compact)();
+#endif
+
         if (memoryTrackerCanThrow(level, false) && throw_if_memory_exceeded)
         {
             OvercommitResult overcommit_result = OvercommitResult::NONE;

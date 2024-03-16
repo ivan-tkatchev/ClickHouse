@@ -90,8 +90,9 @@ extern "C"
 #endif
     size_t ALLOC_PREFIX(malloc_cached_memory_size)();
     size_t ALLOC_PREFIX(malloc_allocated_memory_size)();
+    void ALLOC_PREFIX(malloc_compact)();
 }
 
 #else
-#define ALLOC_PREFIX(func) func
+#define ALLOC_PREFIX(func) ::func
 #endif

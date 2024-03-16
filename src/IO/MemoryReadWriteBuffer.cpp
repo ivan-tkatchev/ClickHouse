@@ -1,6 +1,7 @@
 #include <IO/MemoryReadWriteBuffer.h>
 #include <boost/noncopyable.hpp>
 
+#include "config.h"
 
 namespace DB
 {

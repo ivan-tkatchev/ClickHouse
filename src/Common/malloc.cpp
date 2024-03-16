@@ -1,4 +1,4 @@
-#if defined(OS_LINUX)
+#if defined(OS_LINUX) && !defined(USE_WRAPPED_ALLOCATOR)
 #include <cstdlib>
 
 /// Interposing these symbols explicitly. The idea works like this: malloc.cpp compiles to a
@@ -17,6 +17,9 @@ extern "C"
     void *memalign(size_t alignment, size_t size);
 #if !defined(USE_MUSL)
     void *pvalloc(size_t size);
+#endif
+#if defined(_GNU_SOURCE)
+    size_t malloc_usable_size(void *ptr);
 #endif
 }
 
@@ -39,6 +42,9 @@ static void dummyFunctionForInterposing()
     ignore(memalign(0, 0)); // NOLINT
 #if !defined(USE_MUSL)
     ignore(pvalloc(0)); // NOLINT
+#endif
+#if defined(_GNU_SOURCE)
+    ignore(malloc_usable_size(nullptr)); // NOLINT
 #endif
 }
 #endif

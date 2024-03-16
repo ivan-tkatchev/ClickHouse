@@ -31,6 +31,11 @@
 #include <cstdlib>
 #include <string>
 
+namespace CurrentMetrics
+{
+    extern const Metric AllocatorCachedMemoryTracking;
+    extern const Metric AllocatorAllocatedMemoryTracking;
+}
 
 namespace
 {
@@ -296,32 +301,46 @@ AllocationTrace MemoryTracker::allocImpl(Int64 size, bool throw_if_memory_exceed
 
     Int64 limit_to_check = current_hard_limit;
 
-#if USE_JEMALLOC
-    if (level == VariableContext::Global && allow_use_jemalloc_memory.load(std::memory_order_relaxed))
+    if (level == VariableContext::Global)
     {
-        /// Jemalloc arenas may keep some extra memory.
-        /// This memory was substucted from RSS to decrease memory drift.
-        /// In case memory is close to limit, try to pugre the arenas.
-        /// This is needed to avoid OOM, because some allocations are directly done with mmap.
         Int64 current_free_memory_in_allocator_arenas = free_memory_in_allocator_arenas.load(std::memory_order_relaxed);
 
-        if (current_free_memory_in_allocator_arenas > 0 && current_hard_limit && current_free_memory_in_allocator_arenas + will_be > current_hard_limit)
+#if USE_JEMALLOC
+        if (allow_use_jemalloc_memory.load(std::memory_order_relaxed))
         {
-            if (free_memory_in_allocator_arenas.exchange(-current_free_memory_in_allocator_arenas) > 0)
+            /// Jemalloc arenas may keep some extra memory.
+            /// This memory was substucted from RSS to decrease memory drift.
+            /// In case memory is close to limit, try to pugre the arenas.
+            /// This is needed to avoid OOM, because some allocations are directly done with mmap.
+
+            if (current_free_memory_in_allocator_arenas > 0 && current_hard_limit && current_free_memory_in_allocator_arenas + will_be > current_hard_limit)
             {
-                Stopwatch watch;
-                mallctl("arena." STRINGIFY(MALLCTL_ARENAS_ALL) ".purge", nullptr, nullptr, nullptr, 0);
-                ProfileEvents::increment(ProfileEvents::MemoryAllocatorPurge);
-                ProfileEvents::increment(ProfileEvents::MemoryAllocatorPurgeTimeMicroseconds, watch.elapsedMicroseconds());
+                if (free_memory_in_allocator_arenas.exchange(-current_free_memory_in_allocator_arenas) > 0)
+                {
+                    Stopwatch watch;
+                    mallctl("arena." STRINGIFY(MALLCTL_ARENAS_ALL) ".purge", nullptr, nullptr, nullptr, 0);
+                    ProfileEvents::increment(ProfileEvents::MemoryAllocatorPurge);
+                    ProfileEvents::increment(ProfileEvents::MemoryAllocatorPurgeTimeMicroseconds, watch.elapsedMicroseconds());
+                }
             }
         }
+        else
+        {
+            current_free_memory_in_allocator_arenas = 0;
+        }
+#endif
 
         limit_to_check += abs(current_free_memory_in_allocator_arenas);
     }
-#endif
+    
 
     if (unlikely(current_hard_limit && will_be > limit_to_check))
     {
+
+#if USE_WRAPPED_ALLOCATOR
+        ALLOC_PREFIX(malloc_compact)();
+#endif
+
         if (memoryTrackerCanThrow(level, false) && throw_if_memory_exceeded)
         {
             OvercommitResult overcommit_result = OvercommitResult::NONE;
@@ -535,6 +554,11 @@ void MemoryTracker::setRSS(Int64 rss_, Int64 free_memory_in_allocator_arenas_)
     auto metric_loaded = total_memory_tracker.metric.load(std::memory_order_relaxed);
     if (metric_loaded != CurrentMetrics::end())
         CurrentMetrics::set(metric_loaded, new_amount);
+
+    CurrentMetrics::set(CurrentMetrics::AllocatorCachedMemoryTracking, free_memory_in_allocator_arenas_);
+#if USE_WRAPPED_ALLOCATOR
+    CurrentMetrics::set(CurrentMetrics::AllocatorAllocatedMemoryTracking, ALLOC_PREFIX(malloc_allocated_memory_size)());
+#endif
 
     bool log_memory_usage = true;
     total_memory_tracker.updatePeak(rss_, log_memory_usage);

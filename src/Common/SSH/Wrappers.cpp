@@ -149,7 +149,7 @@ namespace
 {
     struct CStringDeleter
     {
-        [[maybe_unused]] void operator()(char * ptr) const { std::free(ptr); }
+        [[maybe_unused]] void operator()(char * ptr) const { ALLOC_PREFIX(free)(ptr); }
     };
 }
 

@@ -115,7 +115,7 @@ public:
             auto trace_alloc = CurrentMemoryTracker::alloc(new_size);
             trace_free.onFree(buf, old_size);
 
-            void * new_buf = ::realloc(buf, new_size);
+            void * new_buf = ALLOC_PREFIX(realloc)(buf, new_size);
             if (nullptr == new_buf)
             {
                 DB::throwFromErrno(
@@ -159,9 +159,9 @@ private:
         if (alignment <= MALLOC_MIN_ALIGNMENT)
         {
             if constexpr (clear_memory)
-                buf = ::calloc(size, 1);
+                buf = ALLOC_PREFIX(calloc)(size, 1);
             else
-                buf = ::malloc(size);
+                buf = ALLOC_PREFIX(malloc)(size);
 
             if (nullptr == buf)
                 DB::throwFromErrno(fmt::format("Allocator: Cannot malloc {}.", ReadableSize(size)), DB::ErrorCodes::CANNOT_ALLOCATE_MEMORY);
@@ -169,7 +169,7 @@ private:
         else
         {
             buf = nullptr;
-            int res = posix_memalign(&buf, alignment, size);
+            int res = ALLOC_PREFIX(posix_memalign)(&buf, alignment, size);
 
             if (0 != res)
                 DB::throwFromErrno(fmt::format("Cannot allocate memory (posix_memalign) {}.", ReadableSize(size)),
@@ -187,7 +187,7 @@ private:
 
     void freeNoTrack(void * buf)
     {
-        ::free(buf);
+        ALLOC_PREFIX(free)(buf);
     }
 
     void checkSize(size_t size)

@@ -128,7 +128,7 @@ public:
         protect(PROT_READ | PROT_WRITE);
 
         for (auto & page_block : page_blocks)
-            free(page_block.base());
+            ALLOC_PREFIX(free)(page_block.base());
     }
 
     void protect(int protection_flags)
@@ -229,7 +229,7 @@ private:
         size_t allocate_size = page_size * pages_to_allocate_size;
 
         void * buf = nullptr;
-        int res = posix_memalign(&buf, page_size, allocate_size);
+        int res = ALLOC_PREFIX(posix_memalign)(&buf, page_size, allocate_size);
 
         if (res != 0)
             throwFromErrno(

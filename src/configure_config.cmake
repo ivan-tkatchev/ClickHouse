@@ -166,5 +166,8 @@ endif()
 if (TARGET ch_contrib::libarchive)
     set(USE_LIBARCHIVE 1)
 endif()
+if (ENABLE_WRAPPED_ALLOCATOR)
+    set(USE_WRAPPED_ALLOCATOR 1)
+endif()
 
 set(SOURCE_DIR ${PROJECT_SOURCE_DIR})

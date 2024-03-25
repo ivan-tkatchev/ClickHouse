@@ -3622,6 +3622,12 @@ bool StorageReplicatedMergeTree::canExecuteFetch(const ReplicatedMergeTreeLogEnt
 
     auto replicated_fetches_pool_size = getContext()->getFetchesExecutor()->getMaxTasksCount();
     size_t busy_threads_in_pool = CurrentMetrics::values[CurrentMetrics::BackgroundFetchesPoolTask].load(std::memory_order_relaxed);
+
+    size_t stop_fetching_at_max_replicated_fetches = getSettings()->stop_fetching_at_max_replicated_fetches;
+    if (stop_fetching_at_max_replicated_fetches > 0 && stop_fetching_at_max_replicated_fetches < replicated_fetches_pool_size) {
+        replicated_fetches_pool_size = stop_fetching_at_max_replicated_fetches;
+    }
+
     if (busy_threads_in_pool >= replicated_fetches_pool_size)
     {
         disable_reason = fmt::format("Not executing fetch of part {} because {} fetches already executing, max {}.", entry.new_part_name, busy_threads_in_pool, replicated_fetches_pool_size);

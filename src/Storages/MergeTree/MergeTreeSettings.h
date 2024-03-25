@@ -121,9 +121,11 @@ struct Settings;
     M(Seconds, initialization_retry_period, 60, "Retry period for table initialization, in seconds.", 0) \
     M(Bool, detach_old_local_parts_when_cloning_replica, true, "Do not remove old local parts when repairing lost replica.", 0) \
     M(Bool, detach_not_byte_identical_parts, false, "Do not remove non byte-idential parts for ReplicatedMergeTree, instead detach them (maybe useful for further analysis).", 0) \
+    M(UInt64, stop_fetching_at_max_replicated_fetches, 0, "Do not start a background replicated fetch job if at least this many fetch jobs are already running. Meant to be a per-table setting to avoid pool starvation.", 0) \
     M(UInt64, max_replicated_fetches_network_bandwidth, 0, "The maximum speed of data exchange over the network in bytes per second for replicated fetches. Zero means unlimited.", 0) \
     M(UInt64, max_replicated_sends_network_bandwidth, 0, "The maximum speed of data exchange over the network in bytes per second for replicated sends. Zero means unlimited.", 0) \
     M(Milliseconds, wait_for_unique_parts_send_before_shutdown_ms, 0, "Before shutdown table will wait for required amount time for unique parts (exist only on current replica) to be fetched by other replicas (0 means disabled).", 0) \
+    M(Bool, queue_priority_for_recent_fetches, false, "Insert new GET_PART replication entries to the head of the replication queue instead of the tail.", 0) \
     M(Float, fault_probability_before_part_commit, 0, "For testing. Do not change it.", 0) \
     M(Float, fault_probability_after_part_commit, 0, "For testing. Do not change it.", 0) \
     M(Bool, shared_merge_tree_disable_merges_and_mutations_assignment, false, "Only available in ClickHouse Cloud", 0) \

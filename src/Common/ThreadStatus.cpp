@@ -13,6 +13,7 @@
 #include <csignal>
 #include <sys/mman.h>
 
+#include "config.h"
 
 namespace DB
 {
@@ -38,7 +39,7 @@ namespace
 struct ThreadStack
 {
     ThreadStack()
-        : data(aligned_alloc(getPageSize(), getSize()))
+        : data(ALLOC_PREFIX(aligned_alloc)(getPageSize(), getSize()))
     {
         /// Add a guard page
         /// (and since the stack grows downward, we need to protect the first page).
@@ -47,7 +48,7 @@ struct ThreadStack
     ~ThreadStack()
     {
         mprotect(data, getPageSize(), PROT_WRITE|PROT_READ);
-        free(data);
+        ALLOC_PREFIX(free)(data);
     }
 
     static size_t getSize() { return std::max<size_t>(16 << 10, MINSIGSTKSZ); }

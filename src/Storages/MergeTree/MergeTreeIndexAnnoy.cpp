@@ -12,6 +12,7 @@
 #include <Interpreters/Context.h>
 #include <Interpreters/castColumn.h>
 
+#include "config.h"
 
 namespace DB
 {
@@ -57,7 +58,7 @@ void AnnoyIndexWithSerialization<Distance>::deserialize(ReadBuffer & istr)
     readIntBinary(Base::_K, istr);
     readIntBinary(Base::_seed, istr);
     readVectorBinary(Base::_roots, istr);
-    Base::_nodes = realloc(Base::_nodes, Base::_s * Base::_n_nodes);
+    Base::_nodes = ALLOC_PREFIX(realloc)(Base::_nodes, Base::_s * Base::_n_nodes);
     istr.readStrict(reinterpret_cast<char *>(Base::_nodes), Base::_s * Base::_n_nodes);
 
     Base::_fd = 0;

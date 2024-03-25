@@ -6,6 +6,7 @@
 
 #include <Common/CurrentMemoryTracker.h>
 
+#include "config.h"
 
 /// Implementation of std::allocator interface that tracks memory with MemoryTracker.
 /// NOTE We already plug MemoryTracker into new/delete operators. So, everything works even with default allocator.
@@ -32,7 +33,7 @@ struct AllocatorWithMemoryTracking
         size_t bytes = n * sizeof(T);
         auto trace = CurrentMemoryTracker::alloc(bytes);
 
-        T * p = static_cast<T *>(malloc(bytes));
+        T * p = static_cast<T *>(ALLOC_PREFIX(malloc)(bytes));
         if (!p)
             throw std::bad_alloc();
 
@@ -45,7 +46,7 @@ struct AllocatorWithMemoryTracking
     {
         size_t bytes = n * sizeof(T);
 
-        free(p);
+        ALLOC_PREFIX(free)(p);
         auto trace = CurrentMemoryTracker::free(bytes);
         trace.onFree(p, bytes);
     }

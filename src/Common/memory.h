@@ -52,9 +52,9 @@ inline ALWAYS_INLINE void * newImpl(std::size_t size, TAlign... align)
 
     void * ptr = nullptr;
     if constexpr (sizeof...(TAlign) == 1)
-        ptr = aligned_alloc(alignToSizeT(align...), size);
+        ptr = ALLOC_PREFIX(aligned_alloc)(alignToSizeT(align...), size);
     else
-        ptr = malloc(size);
+        ptr = ALLOC_PREFIX(malloc)(size);
 
     if (likely(ptr != nullptr))
         return ptr;
@@ -72,7 +72,7 @@ inline ALWAYS_INLINE void * newNoExept(std::size_t size) noexcept
             return ptr;
     }
 #endif
-    return malloc(size);
+    return ALLOC_PREFIX(malloc)(size);
 }
 
 inline ALWAYS_INLINE void * newNoExept(std::size_t size, std::align_val_t align) noexcept
@@ -84,7 +84,7 @@ inline ALWAYS_INLINE void * newNoExept(std::size_t size, std::align_val_t align)
             return ptr;
     }
 #endif
-    return aligned_alloc(static_cast<size_t>(align), size);
+    return ALLOC_PREFIX(aligned_alloc)(static_cast<size_t>(align), size);
 }
 
 inline ALWAYS_INLINE void deleteImpl(void * ptr) noexcept
@@ -96,7 +96,7 @@ inline ALWAYS_INLINE void deleteImpl(void * ptr) noexcept
         return;
     }
 #endif
-    free(ptr);
+    ALLOC_PREFIX(free)(ptr);
 }
 
 #if USE_JEMALLOC
@@ -135,7 +135,7 @@ inline ALWAYS_INLINE void deleteSized(void * ptr, std::size_t size [[maybe_unuse
         return;
     }
 #endif
-    free(ptr);
+    ALLOC_PREFIX(free)(ptr);
 }
 
 #endif
@@ -148,7 +148,7 @@ inline ALWAYS_INLINE void deleteSized(void * ptr, std::size_t size [[maybe_unuse
 
 template <std::same_as<std::align_val_t>... TAlign>
 requires DB::OptionalArgument<TAlign...>
-inline ALWAYS_INLINE size_t getActualAllocationSize(size_t size, TAlign... align [[maybe_unused]])
+inline ALWAYS_INLINE size_t getActualAllocationSize(void * ptr [[maybe_unused]], size_t size, TAlign... align [[maybe_unused]])
 {
     size_t actual_size = size;
 
@@ -163,15 +163,18 @@ inline ALWAYS_INLINE size_t getActualAllocationSize(size_t size, TAlign... align
             actual_size = nallocx(size, 0);
     }
 #endif
+#if defined(_GNU_SOURCE)
+    actual_size = ALLOC_PREFIX(malloc_usable_size)(ptr);
+#endif
 
     return actual_size;
 }
 
 template <std::same_as<std::align_val_t>... TAlign>
 requires DB::OptionalArgument<TAlign...>
-inline ALWAYS_INLINE size_t trackMemory(std::size_t size, AllocationTrace & trace, TAlign... align)
+inline ALWAYS_INLINE size_t trackMemory(void * ptr, std::size_t size, AllocationTrace & trace, TAlign... align)
 {
-    std::size_t actual_size = getActualAllocationSize(size, align...);
+    std::size_t actual_size = getActualAllocationSize(ptr, size, align...);
     trace = CurrentMemoryTracker::allocNoThrow(actual_size);
     return actual_size;
 }
@@ -205,12 +208,10 @@ inline ALWAYS_INLINE size_t untrackMemory(void * ptr [[maybe_unused]], Allocatio
                 actual_size = sallocx(ptr, 0);
         }
 #else
-        if (size)
-            actual_size = size;
 #    if defined(_GNU_SOURCE)
-        /// It's innaccurate resource free for sanitizers. malloc_usable_size() result is greater or equal to allocated size.
-        else
-            actual_size = malloc_usable_size(ptr);
+        actual_size = ALLOC_PREFIX(malloc_usable_size)(ptr);
+#    else
+        actual_size = size;
 #    endif
 #endif
         trace = CurrentMemoryTracker::free(actual_size);

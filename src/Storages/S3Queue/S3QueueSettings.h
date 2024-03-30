@@ -14,13 +14,15 @@ class ASTStorage;
     M(S3QueueMode, \
       mode, \
       S3QueueMode::ORDERED, \
-      "With unordered mode, the set of all already processed files is tracked with persistent nodes in ZooKepeer." \
-      "With ordered mode, only the max name of the successfully consumed file stored.", \
+      "With unordered mode, the set of all already processed files is tracked with persistent nodes in ZooKepeer. " \
+      "With ordered mode, only the max name of the successfully consumed file stored. " \
+      "With exclusive mode, no tracking is done; assumes only one node will ever access this S3-compatible storage.",\
       0) \
     M(S3QueueAction, after_processing, S3QueueAction::KEEP, "Delete or keep file in S3 after successful processing", 0) \
     M(String, keeper_path, "", "Zookeeper node path", 0) \
     M(UInt32, s3queue_loading_retries, 0, "Retry loading up to specified number of times", 0) \
-    M(UInt32, s3queue_processing_threads_num, 1, "Number of processing threads", 0) \
+    M(UInt32, s3queue_processing_engines_num, 1, "Number of parallel table engines (for listing files and processing batches in parallel)", 0) \
+    M(UInt32, s3queue_processing_threads_num, 1, "Number of processing threads (for processing a batch of files in parallel)", 0) \
     M(UInt32, s3queue_enable_logging_to_s3queue_log, 1, "Enable logging to system table system.s3queue_log", 0) \
     M(UInt32, s3queue_tracked_file_ttl_sec, 0, "Maximum number of seconds to store processed files in ZooKeeper node (store forever by default)", 0) \
     M(UInt32, s3queue_polling_min_timeout_ms, 1000, "Minimal timeout before next polling", 0) \

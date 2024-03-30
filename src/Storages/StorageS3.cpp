@@ -267,7 +267,8 @@ public:
         ContextPtr context_,
         KeysWithInfo * read_keys_,
         const S3Settings::RequestSettings & request_settings_,
-        std::function<void(FileProgress)> file_progress_callback_)
+        std::function<void(FileProgress)> file_progress_callback_,
+        std::pair<UInt32,UInt32> slice_)
         : WithContext(context_)
         , client(client_.clone())
         , globbed_uri(globbed_uri_)
@@ -278,6 +279,7 @@ public:
         , list_objects_pool(CurrentMetrics::StorageS3Threads, CurrentMetrics::StorageS3ThreadsActive, CurrentMetrics::StorageS3ThreadsScheduled, 1)
         , list_objects_scheduler(threadPoolCallbackRunner<ListObjectsOutcome>(list_objects_pool, "ListObjects"))
         , file_progress_callback(file_progress_callback_)
+        , slice(slice_)
     {
         if (globbed_uri.bucket.find_first_of("*?{") != globbed_uri.bucket.npos)
             throw Exception(ErrorCodes::UNEXPECTED_EXPRESSION, "Expression can not have wildcards inside bucket name");
@@ -407,13 +409,17 @@ private:
             String key = row.GetKey();
             if (recursive || re2::RE2::FullMatch(key, *matcher))
             {
-                S3::ObjectInfo info =
+                if (slice.second == 0 ||
+                    (std::hash<String>()(key) % slice.second) == slice.first)
                 {
-                    .size = size_t(row.GetSize()),
-                    .last_modification_time = row.GetLastModified().Millis() / 1000,
-                };
+                    S3::ObjectInfo info =
+                    {
+                        .size = size_t(row.GetSize()),
+                        .last_modification_time = row.GetLastModified().Millis() / 1000,
+                    };
 
-                temp_buffer.emplace_back(std::make_shared<KeyWithInfo>(std::move(key), std::move(info)));
+                    temp_buffer.emplace_back(std::make_shared<KeyWithInfo>(std::move(key), std::move(info)));
+                }
             }
         }
 
@@ -492,6 +498,7 @@ private:
     ThreadPoolCallbackRunner<ListObjectsOutcome> list_objects_scheduler;
     std::future<ListObjectsOutcome> outcome_future;
     std::function<void(FileProgress)> file_progress_callback;
+    std::pair<UInt32, UInt32> slice{0, 0};
 };
 
 StorageS3Source::DisclosedGlobIterator::DisclosedGlobIterator(
@@ -501,9 +508,11 @@ StorageS3Source::DisclosedGlobIterator::DisclosedGlobIterator(
     const NamesAndTypesList & virtual_columns_,
     ContextPtr context,
     KeysWithInfo * read_keys_,
+    UInt32 slice_i,
+    UInt32 slice_n,
     const S3Settings::RequestSettings & request_settings_,
     std::function<void(FileProgress)> file_progress_callback_)
-    : pimpl(std::make_shared<StorageS3Source::DisclosedGlobIterator::Impl>(client_, globbed_uri_, query, virtual_columns_, context, read_keys_, request_settings_, file_progress_callback_))
+    : pimpl(std::make_shared<StorageS3Source::DisclosedGlobIterator::Impl>(client_, globbed_uri_, query, virtual_columns_, context, read_keys_, request_settings_, file_progress_callback_, std::make_pair(slice_i, slice_n)))
 {
 }
 
@@ -1165,7 +1174,7 @@ static std::shared_ptr<StorageS3Source::IIterator> createFileIterator(
         /// Iterate through disclosed globs and make a source for each file
         return std::make_shared<StorageS3Source::DisclosedGlobIterator>(
             *configuration.client, configuration.url, query, virtual_columns,
-            local_context, read_keys, configuration.request_settings, file_progress_callback);
+            local_context, read_keys, 0, 0, configuration.request_settings, file_progress_callback);
     }
     else
     {

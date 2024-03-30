@@ -183,7 +183,8 @@ IMPLEMENT_SETTING_ENUM(ORCCompression, ErrorCodes::BAD_ARGUMENTS,
 
 IMPLEMENT_SETTING_ENUM(S3QueueMode, ErrorCodes::BAD_ARGUMENTS,
                        {{"ordered", S3QueueMode::ORDERED},
-                        {"unordered", S3QueueMode::UNORDERED}})
+                        {"unordered", S3QueueMode::UNORDERED},
+                        {"exclusive", S3QueueMode::EXCLUSIVE}})
 
 IMPLEMENT_SETTING_ENUM(S3QueueAction, ErrorCodes::BAD_ARGUMENTS,
                        {{"keep", S3QueueAction::KEEP},

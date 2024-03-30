@@ -238,6 +238,7 @@ enum class S3QueueMode
 {
     ORDERED,
     UNORDERED,
+    EXCLUSIVE
 };
 
 DECLARE_SETTING_ENUM(S3QueueMode)

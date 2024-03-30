@@ -268,6 +268,11 @@ S3QueueFilesMetadata::ProcessingNodeHolderPtr S3QueueFilesMetadata::trySetFileAs
             std::tie(result, processing_node_holder) = trySetFileAsProcessingForUnorderedMode(path, file_status);
             break;
         }
+        case S3QueueMode::EXCLUSIVE:
+        {
+            std::tie(result, processing_node_holder) = trySetFileAsProcessingForExclusiveMode(path, file_status);
+            break;
+        }
     }
 
     /// Cache file status, save some statistics.
@@ -309,6 +314,20 @@ S3QueueFilesMetadata::ProcessingNodeHolderPtr S3QueueFilesMetadata::trySetFileAs
         return processing_node_holder;
 
     return {};
+}
+
+std::pair<S3QueueFilesMetadata::SetFileProcessingResult,
+          S3QueueFilesMetadata::ProcessingNodeHolderPtr> S3QueueFilesMetadata::trySetFileAsProcessingForExclusiveMode(const std::string & path, const FileStatusPtr & file_status)
+{
+    /// Assume only one Clickhouse node ever processes these files;
+    /// store nothing in Zookeeper
+
+    const auto node_name = getNodeName(path);
+    auto node_metadata = createNodeMetadata(path);
+    node_metadata.processing_id = getRandomASCIIString(10);
+
+    auto holder = std::make_unique<ProcessingNodeHolder>(node_metadata.processing_id, path, zookeeper_processing_path / node_name, file_status, nullptr);
+    return std::pair{SetFileProcessingResult::Success, std::move(holder)};
 }
 
 std::pair<S3QueueFilesMetadata::SetFileProcessingResult,
@@ -455,7 +474,17 @@ void S3QueueFilesMetadata::setFileProcessed(ProcessingNodeHolderPtr holder)
         {
             return setFileProcessedForUnorderedMode(holder);
         }
+        case S3QueueMode::EXCLUSIVE:
+        {
+            return setFileProcessedForExclusiveMode(holder);
+        }
     }
+}
+
+void S3QueueFilesMetadata::setFileProcessedForExclusiveMode([[maybe_unused]] ProcessingNodeHolderPtr holder)
+{
+    /// Assume only this node ever accesses these S3 files.
+    /// Nothing is changed in zookeeper.
 }
 
 void S3QueueFilesMetadata::setFileProcessedForUnorderedMode(ProcessingNodeHolderPtr holder)
@@ -701,6 +730,9 @@ S3QueueFilesMetadata::ProcessingNodeHolder::~ProcessingNodeHolder()
 
 bool S3QueueFilesMetadata::ProcessingNodeHolder::remove(Coordination::Requests * requests, Coordination::Responses * responses)
 {
+    if (!zk_client)
+        return true;
+
     if (removed)
         throw Exception(ErrorCodes::LOGICAL_ERROR, "Processing node is already removed");
 

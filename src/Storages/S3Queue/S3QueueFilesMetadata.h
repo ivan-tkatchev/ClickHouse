@@ -22,7 +22,7 @@ class StorageS3Queue;
  * - <path_to_metadata>/processed
  * - <path_to_metadata>/failed
  *
- * Depending on S3Queue processing mode (ordered or unordered)
+ * Depending on S3Queue processing mode (ordered/unordered/exclusive)
  * we can differently store metadata in /processed node.
  *
  * Implements caching of zookeeper metadata for faster responses.
@@ -102,6 +102,7 @@ private:
 
     zkutil::ZooKeeperPtr getZooKeeper() const;
 
+    void setFileProcessedForExclusiveMode(ProcessingNodeHolderPtr holder);
     void setFileProcessedForOrderedMode(ProcessingNodeHolderPtr holder);
     void setFileProcessedForUnorderedMode(ProcessingNodeHolderPtr holder);
 
@@ -112,6 +113,7 @@ private:
         AlreadyProcessed,
         AlreadyFailed,
     };
+    std::pair<SetFileProcessingResult, ProcessingNodeHolderPtr> trySetFileAsProcessingForExclusiveMode(const std::string & path, const FileStatusPtr & file_status);
     std::pair<SetFileProcessingResult, ProcessingNodeHolderPtr> trySetFileAsProcessingForOrderedMode(const std::string & path, const FileStatusPtr & file_status);
     std::pair<SetFileProcessingResult, ProcessingNodeHolderPtr> trySetFileAsProcessingForUnorderedMode(const std::string & path, const FileStatusPtr & file_status);
 

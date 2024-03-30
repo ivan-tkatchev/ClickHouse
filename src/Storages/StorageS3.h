@@ -82,6 +82,8 @@ public:
             const NamesAndTypesList & virtual_columns,
             ContextPtr context,
             KeysWithInfo * read_keys_ = nullptr,
+            UInt32 slice_i = 0,
+            UInt32 slice_n = 0,
             const S3Settings::RequestSettings & request_settings_ = {},
             std::function<void(FileProgress)> progress_callback_ = {});
 
